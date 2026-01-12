@@ -1,0 +1,18 @@
+Metric,Value
+Total Samples,160
+Valid Predictions,155
+Invalid Predictions,5
+Accuracy,93.55%
+Precision (Toxic),93.33%
+Precision (Non-toxic),93.75%
+Precision (Macro),93.54%
+Recall (Toxic),93.33%
+Recall (Non-toxic),93.75%
+Recall (Macro),93.54%
+F1-Score (Toxic),93.33%
+F1-Score (Non-toxic),93.75%
+F1-Score (Macro),93.54%
+True Positives,70
+True Negatives,75
+False Positives,5
+False Negatives,5

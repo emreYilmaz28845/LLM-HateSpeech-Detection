@@ -1,0 +1,2 @@
+total_samples,valid_samples,invalid_samples,accuracy,precision_toxic,precision_nontoxic,precision_macro,recall_toxic,recall_nontoxic,recall_macro,f1_toxic,f1_nontoxic,f1_macro,true_positives,true_negatives,false_positives,false_negatives
+160,155,5,0.9354838709677419,0.9333333333333333,0.9375,0.9354166666666667,0.9333333333333333,0.9375,0.9354166666666667,0.9333333333333333,0.9375,0.9354166666666667,70,75,5,5

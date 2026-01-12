@@ -1,7 +1,5 @@
 __pycache__/
 *.pyc
 .venv/
-data/
-results/
 .AI525-env
 AI525-env

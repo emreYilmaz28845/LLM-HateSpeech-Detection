@@ -1,0 +1,8 @@
+Metric,Zero-Shot,Few-Shot (5 examples)
+Accuracy,95.60%,94.23%
+Precision (Macro),95.65%,94.22%
+Recall (Macro),95.61%,94.24%
+F1-Score (Macro),95.60%,94.23%
+Valid Predictions %,99.4%,97.5%
+False Positives,5,5
+False Negatives,2,4
