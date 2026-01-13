@@ -122,12 +122,5 @@ The model classifies text based only on task instructions without any examples.
 - Confusion matrix analysis
 - Error pattern identification
 
-## Requirements
 
-- Python 3.8+
-- Ollama running locally
-- llama3.2:3b model (or modify config for different model)
 
-## License
-
-MIT License
