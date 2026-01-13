@@ -1,6 +1,5 @@
 """
-Main pipeline script for Toxicity Detection System.
-Orchestrates all steps from data loading to report generation.
+Runs the whole toxicity project end to end, from loading data to writing reports.
 """
 
 import os
@@ -8,7 +7,7 @@ import sys
 import time
 from datetime import datetime
 
-# Add project directory to path
+# make sure Python can find the local modules
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import config
@@ -23,7 +22,7 @@ import pandas as pd
 
 
 def print_header():
-    """Print project header."""
+    """Print the little banner for the run."""
     print("\n" + "="*70)
     print("   TOXICITY/HATE SPEECH DETECTION SYSTEM")
     print("   Using Few-Shot Learning with Ollama (llama3.2:3b)")
@@ -33,12 +32,12 @@ def print_header():
 
 
 def check_ollama():
-    """Verify Ollama is running and model is available."""
+    """Check that Ollama is up and the model is already pulled."""
     print("Checking Ollama setup...")
     try:
         import ollama
         models_response = ollama.list()
-        # Handle both dict and Pydantic model responses
+        # handles both response shapes from the client
         if hasattr(models_response, 'models'):
             models = models_response.models
             model_names = [m.model if hasattr(m, 'model') else m.get('model', '') for m in models]
@@ -47,7 +46,7 @@ def check_ollama():
             model_names = [m.get('name', m.get('model', '')) for m in models]
 
         if config.MODEL_NAME not in model_names and f"{config.MODEL_NAME}:latest" not in model_names:
-            # Check without version suffix
+            # also check names without the version tag
             base_name = config.MODEL_NAME.split(':')[0]
             found = any(base_name in name for name in model_names)
             if not found:
@@ -66,7 +65,7 @@ def check_ollama():
 
 
 def run_step(step_num, step_name, func, *args, **kwargs):
-    """Run a pipeline step with timing and error handling."""
+    """Run one pipeline step, time it, and surface any errors."""
     print(f"\n{'='*70}")
     print(f"STEP {step_num}: {step_name}")
     print(f"{'='*70}")
@@ -86,63 +85,63 @@ def run_step(step_num, step_name, func, *args, **kwargs):
 
 def run_full_pipeline():
     """
-    Run the complete toxicity detection pipeline.
+    Run everything for the toxicity project in one go.
     """
     print_header()
     start_time = time.time()
 
-    # Check prerequisites
+    # make sure Ollama and the model are ready before doing anything else
     if not check_ollama():
         print("\nPlease fix Ollama setup and try again.")
         return None
 
-    # Create output directories
+    # set up output folders if they are missing
     os.makedirs(config.RESULTS_DIR, exist_ok=True)
     os.makedirs(config.FIGURES_DIR, exist_ok=True)
     os.makedirs(config.REPORTS_DIR, exist_ok=True)
     os.makedirs("data", exist_ok=True)
 
-    # Step 1: Prepare Dataset
+    # Step 1: data prep
     train_df, test_df = run_step(
         1, "Data Preparation",
         prepare_dataset
     )
 
-    # Step 2: Run Inference
+    # Step 2: run model inference
     results_df = run_step(
         2, "Model Inference",
         run_inference_pipeline
     )
 
-    # Step 3: Calculate Metrics
+    # Step 3: compute metrics
     metrics = run_step(
         3, "Metrics Calculation",
         calculate_and_report,
         results_df
     )
 
-    # Step 4: Generate Visualizations
+    # Step 4: draw the figures
     run_step(
         4, "Visualization Generation",
         generate_all_visualizations,
         results_df, metrics
     )
 
-    # Step 5: Error Analysis
+    # Step 5: dig into mistakes
     run_step(
         5, "Error Analysis",
         run_error_analysis,
         results_df
     )
 
-    # Step 6: Generate Reports
+    # Step 6: write out the reports
     run_step(
         6, "Report Generation",
         generate_all_reports,
         results_df
     )
 
-    # Final Summary
+    # wrap-up summary
     total_time = time.time() - start_time
     print("\n" + "="*70)
     print("PIPELINE COMPLETE")
@@ -168,13 +167,13 @@ def run_full_pipeline():
 
 
 def run_inference_only():
-    """Run inference only (assumes data is already prepared)."""
+    """Just run inference (assumes the data is already prepped)."""
     print_header()
 
     if not check_ollama():
         return None
 
-    # Check if data exists
+    # if test data is missing, prep it first
     if not os.path.exists(config.TEST_DATA_PATH):
         print("Test data not found. Running data preparation first...")
         prepare_dataset()
@@ -186,7 +185,7 @@ def run_inference_only():
 
 
 def run_analysis_only():
-    """Run analysis only (assumes inference is already done)."""
+    """Only do analysis and visuals (needs existing predictions)."""
     print_header()
 
     results_path = f"{config.RESULTS_DIR}/predictions.csv"

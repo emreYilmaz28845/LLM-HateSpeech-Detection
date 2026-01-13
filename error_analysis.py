@@ -1,6 +1,4 @@
-"""
-Error analysis module for toxicity classification.
-"""
+# error_analysis.py - looks at what the model got wrong
 
 import pandas as pd
 import os
@@ -9,19 +7,18 @@ import config
 
 def extract_misclassified(results_df):
     """
-    Extract all misclassified examples from results.
+    gets all the examples the model got wrong
 
-    Returns:
-        tuple: (false_positives_df, false_negatives_df)
+    returns (false_positives_df, false_negatives_df)
     """
     valid_df = results_df[results_df['predicted_label'] != -1].copy()
 
-    # False Positives: Non-toxic classified as toxic
+    # false positives = said toxic when it wasnt
     false_positives = valid_df[
         (valid_df['true_label'] == 0) & (valid_df['predicted_label'] == 1)
     ].copy()
 
-    # False Negatives: Toxic classified as non-toxic
+    # false negatives = missed toxic content
     false_negatives = valid_df[
         (valid_df['true_label'] == 1) & (valid_df['predicted_label'] == 0)
     ].copy()
@@ -31,7 +28,7 @@ def extract_misclassified(results_df):
 
 def extract_invalid_predictions(results_df):
     """
-    Extract samples where the model gave invalid responses.
+    gets samples where model gave weird responses we couldnt parse
     """
     invalid_df = results_df[results_df['predicted_label'] == -1].copy()
     return invalid_df
@@ -39,7 +36,7 @@ def extract_invalid_predictions(results_df):
 
 def analyze_text_patterns(df, label):
     """
-    Analyze patterns in misclassified texts.
+    looks for patterns in the misclassified texts
     """
     if len(df) == 0:
         return {}
@@ -58,7 +55,7 @@ def analyze_text_patterns(df, label):
 
 def generate_error_report(results_df, output_path=None):
     """
-    Generate a comprehensive error analysis report.
+    makes a big report about all the errors
     """
     output_path = output_path or f"{config.REPORTS_DIR}/error_analysis.txt"
     os.makedirs(config.REPORTS_DIR, exist_ok=True)
@@ -76,7 +73,7 @@ def generate_error_report(results_df, output_path=None):
     report.append("Toxicity Classification with llama3.2:3b")
     report.append("="*70)
 
-    # Summary
+    # summary section
     report.append("\n" + "="*70)
     report.append("SUMMARY")
     report.append("="*70)
@@ -90,7 +87,7 @@ def generate_error_report(results_df, output_path=None):
     report.append(f"False Negatives: {len(false_negatives)}")
     report.append(f"Invalid responses: {len(invalid_predictions)}")
 
-    # False Positives Analysis
+    # false positives section
     report.append("\n" + "="*70)
     report.append("FALSE POSITIVES ANALYSIS")
     report.append("(Non-toxic text incorrectly classified as toxic)")
@@ -107,7 +104,7 @@ def generate_error_report(results_df, output_path=None):
     else:
         report.append("\nNo false positives found.")
 
-    # False Negatives Analysis
+    # false negatives section
     report.append("\n" + "="*70)
     report.append("FALSE NEGATIVES ANALYSIS")
     report.append("(Toxic text incorrectly classified as non-toxic)")
@@ -124,7 +121,7 @@ def generate_error_report(results_df, output_path=None):
     else:
         report.append("\nNo false negatives found.")
 
-    # Invalid Predictions Analysis
+    # invalid predictions section
     if len(invalid_predictions) > 0:
         report.append("\n" + "="*70)
         report.append("INVALID PREDICTIONS ANALYSIS")
@@ -137,7 +134,7 @@ def generate_error_report(results_df, output_path=None):
             report.append(f"\n{i}. Text: {text[:200]}..." if len(text) > 200 else f"\n{i}. Text: {text}")
             report.append(f"   Model response: {resp}")
 
-    # Insights and Patterns
+    # patterns section
     report.append("\n" + "="*70)
     report.append("INSIGHTS AND PATTERNS")
     report.append("="*70)
@@ -159,7 +156,7 @@ def generate_error_report(results_df, output_path=None):
     if fn_analysis and fn_analysis.get('avg_length', 0) < 50:
         report.append("- Shorter toxic texts may be harder to detect (false negatives)")
 
-    # Recommendations
+    # recommendations
     report.append("\n" + "="*70)
     report.append("RECOMMENDATIONS FOR IMPROVEMENT")
     report.append("="*70)
@@ -172,7 +169,7 @@ def generate_error_report(results_df, output_path=None):
 
     report_text = "\n".join(report)
 
-    # Save report
+    # save it
     with open(output_path, 'w', encoding='utf-8') as f:
         f.write(report_text)
 
@@ -183,7 +180,7 @@ def generate_error_report(results_df, output_path=None):
 
 def save_misclassified_samples(results_df):
     """
-    Save misclassified samples to separate CSV files for further analysis.
+    saves the misclassified samples to csv files so we can look at them later
     """
     os.makedirs(config.REPORTS_DIR, exist_ok=True)
 
@@ -208,7 +205,7 @@ def save_misclassified_samples(results_df):
 
 def run_error_analysis(results_df):
     """
-    Run complete error analysis pipeline.
+    runs the whole error analysis pipeline
     """
     print("\n" + "="*50)
     print("RUNNING ERROR ANALYSIS")
@@ -217,7 +214,7 @@ def run_error_analysis(results_df):
     report = generate_error_report(results_df)
     save_misclassified_samples(results_df)
 
-    # Print summary to console
+    # print summary
     false_positives, false_negatives = extract_misclassified(results_df)
     invalid = extract_invalid_predictions(results_df)
 
@@ -230,7 +227,7 @@ def run_error_analysis(results_df):
 
 
 if __name__ == "__main__":
-    # Load results and run error analysis
+    # load results and analyze errors
     try:
         results_df = pd.read_csv(f"{config.RESULTS_DIR}/predictions.csv")
         run_error_analysis(results_df)

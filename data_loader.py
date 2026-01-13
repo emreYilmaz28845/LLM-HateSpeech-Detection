@@ -1,6 +1,4 @@
-"""
-Data loading and preprocessing module for toxicity detection.
-"""
+# data_loader.py - handles downloading and preparing the dataset
 
 import pandas as pd
 import numpy as np
@@ -11,10 +9,7 @@ import config
 
 
 def download_dataset():
-    """
-    Download the toxicity dataset from the specified URL.
-    Returns the path to the downloaded file.
-    """
+    # downloads the csv file from github if we dont have it already
     os.makedirs("data", exist_ok=True)
 
     if os.path.exists(config.RAW_DATA_PATH):
@@ -33,9 +28,7 @@ def download_dataset():
 
 
 def load_and_explore_data(filepath):
-    """
-    Load dataset and perform basic EDA.
-    """
+    # loads the csv and prints some basic stats about it
     print("\n" + "="*50)
     print("LOADING AND EXPLORING DATA")
     print("="*50)
@@ -53,7 +46,7 @@ def load_and_explore_data(filepath):
     print(f"\nMissing values:")
     print(df.isnull().sum())
 
-    # Check for label column - might be named differently
+    # try to find which column has the labels
     label_col = None
     for col in ['label', 'is_toxic', 'toxic', 'toxicity', 'class']:
         if col in df.columns:
@@ -70,27 +63,25 @@ def load_and_explore_data(filepath):
 
 
 def preprocess_data(df, text_col='text', label_col='is_toxic'):
-    """
-    Clean and preprocess the dataset.
-    """
+    # cleans up the data - removes nulls, duplicates, and converts labels to 0/1
     print("\n" + "="*50)
     print("PREPROCESSING DATA")
     print("="*50)
 
     original_size = len(df)
 
-    # Remove null values
+    # get rid of rows with missing values
     df = df.dropna(subset=[text_col, label_col])
     print(f"Removed {original_size - len(df)} rows with null values")
 
-    # Remove duplicates
+    # get rid of duplicate texts
     size_before = len(df)
     df = df.drop_duplicates(subset=[text_col])
     print(f"Removed {size_before - len(df)} duplicate texts")
 
-    # Standardize labels to binary (0 = non-toxic, 1 = toxic)
+    # convert labels to 0 and 1
+    # the dataset uses "Toxic" and "Not Toxic" so we need to handle that
     if df[label_col].dtype == 'object':
-        # Normalize labels - handle various formats
         df['label'] = df[label_col].str.lower().str.strip().map({
             'toxic': 1, 'not toxic': 0, 'non-toxic': 0, 'nontoxic': 0,
             'yes': 1, 'no': 0, '1': 1, '0': 0
@@ -98,11 +89,11 @@ def preprocess_data(df, text_col='text', label_col='is_toxic'):
     else:
         df['label'] = df[label_col].astype(int)
 
-    # Create text column if different name
+    # make sure we have a 'text' column
     if text_col != 'text':
         df['text'] = df[text_col]
 
-    # Keep only relevant columns
+    # only keep the columns we need
     df = df[['text', 'label']].copy()
 
     print(f"\nFinal dataset size: {len(df)}")
@@ -113,25 +104,27 @@ def preprocess_data(df, text_col='text', label_col='is_toxic'):
 
 
 def create_balanced_subset(df, samples_per_class=100):
-    """
-    Create a balanced subset with equal samples from each class.
-    """
+    # takes equal number of toxic and non-toxic samples
+    # this way the model isnt biased towards one class
     print("\n" + "="*50)
     print("CREATING BALANCED SUBSET")
     print("="*50)
 
     np.random.seed(config.RANDOM_SEED)
 
+    # grab toxic samples
     toxic_samples = df[df['label'] == 1].sample(
         n=min(samples_per_class, len(df[df['label'] == 1])),
         random_state=config.RANDOM_SEED
     )
 
+    # grab non-toxic samples
     non_toxic_samples = df[df['label'] == 0].sample(
         n=min(samples_per_class, len(df[df['label'] == 0])),
         random_state=config.RANDOM_SEED
     )
 
+    # combine and shuffle them
     balanced_df = pd.concat([toxic_samples, non_toxic_samples]).sample(
         frac=1, random_state=config.RANDOM_SEED
     ).reset_index(drop=True)
@@ -144,9 +137,9 @@ def create_balanced_subset(df, samples_per_class=100):
 
 
 def split_data(df, test_ratio=0.8):
-    """
-    Split data into train (for few-shot examples) and test sets.
-    """
+    # splits data into train and test
+    # train set is small because we only use it for few-shot examples
+    # most of the data goes to test set for evaluation
     print("\n" + "="*50)
     print("SPLITTING DATA")
     print("="*50)
@@ -154,7 +147,7 @@ def split_data(df, test_ratio=0.8):
     train_df, test_df = train_test_split(
         df,
         test_size=test_ratio,
-        stratify=df['label'],
+        stratify=df['label'],  # keeps the class balance in both sets
         random_state=config.RANDOM_SEED
     )
 
@@ -165,9 +158,7 @@ def split_data(df, test_ratio=0.8):
 
 
 def save_processed_data(processed_df, train_df, test_df):
-    """
-    Save processed datasets to CSV files.
-    """
+    # saves everything to csv files
     os.makedirs("data", exist_ok=True)
 
     processed_df.to_csv(config.PROCESSED_DATA_PATH, index=False)
@@ -180,33 +171,32 @@ def save_processed_data(processed_df, train_df, test_df):
 
 
 def prepare_dataset():
-    """
-    Main function to download, process, and prepare the dataset.
-    """
-    # Download dataset
+    # main function that runs all the steps
+
+    # step 1: download
     filepath = download_dataset()
 
-    # Load and explore
+    # step 2: load and look at the data
     df, label_col = load_and_explore_data(filepath)
 
-    # Determine text column
+    # figure out which columns to use
     text_col = 'text' if 'text' in df.columns else df.columns[0]
     if label_col is None:
         label_col = 'is_toxic' if 'is_toxic' in df.columns else df.columns[1]
 
-    # Preprocess
+    # step 3: clean it up
     processed_df = preprocess_data(df, text_col, label_col)
 
-    # Create balanced subset
+    # step 4: make it balanced
     balanced_df = create_balanced_subset(
         processed_df,
         samples_per_class=config.SAMPLE_SIZE_PER_CLASS
     )
 
-    # Split data
+    # step 5: split into train/test
     train_df, test_df = split_data(balanced_df, test_ratio=config.TEST_SPLIT_RATIO)
 
-    # Save
+    # step 6: save to files
     save_processed_data(balanced_df, train_df, test_df)
 
     return train_df, test_df

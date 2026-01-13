@@ -1,6 +1,4 @@
-"""
-Inference module for toxicity classification using Ollama.
-"""
+# inference.py - this is where the actual model calls happen
 
 import ollama
 import re
@@ -13,44 +11,42 @@ from prompt_design import PromptManager
 
 def parse_response(response_text):
     """
-    Parse and clean the model output to extract classification.
-    Returns: 1 for toxic, 0 for non-toxic, -1 for invalid response
+    takes the model output and figures out if its toxic or not
+    returns 1 for toxic, 0 for non-toxic, -1 if we cant tell
     """
-    # Clean the response
+    # clean up the response first
     cleaned = response_text.strip().lower()
 
-    # Remove any punctuation and extra whitespace
+    # get rid of punctuation and extra spaces
     cleaned = re.sub(r'[^\w\s-]', '', cleaned)
     cleaned = cleaned.strip()
 
-    # Check for toxic/non-toxic
+    # check if its non-toxic first (has to come before toxic check)
     if 'non-toxic' in cleaned or 'non toxic' in cleaned or 'nontoxic' in cleaned:
         return 0
     elif 'toxic' in cleaned:
         return 1
     else:
-        # Try to find the first word
+        # sometimes the model just says one word
         first_word = cleaned.split()[0] if cleaned.split() else ""
         if first_word in ['toxic']:
             return 1
         elif first_word in ['non-toxic', 'nontoxic', 'non']:
             return 0
 
-    return -1  # Invalid response
+    return -1  # couldnt figure out what the model meant
 
 
 def classify_text(text, prompt_manager, model_name=None, retries=None):
     """
-    Classify a single text using the Ollama model.
+    sends one text to the model and gets a classification back
 
-    Args:
-        text: The text to classify
-        prompt_manager: PromptManager instance with loaded examples
-        model_name: Name of the model to use
-        retries: Number of retries on failure
+    text: what we want to classify
+    prompt_manager: has all our few-shot examples ready
+    model_name: which model to use (defaults to config)
+    retries: how many times to try if it fails
 
-    Returns:
-        dict with 'prediction' (0, 1, or -1) and 'raw_response'
+    returns a dict with prediction (0, 1, or -1) and the raw model response
     """
     model_name = model_name or config.MODEL_NAME
     retries = retries or config.MAX_RETRIES
@@ -59,12 +55,13 @@ def classify_text(text, prompt_manager, model_name=None, retries=None):
 
     for attempt in range(retries):
         try:
+            # this is the actual ollama call
             response = ollama.generate(
                 model=model_name,
                 prompt=prompt,
                 options={
-                    'temperature': 0.1,  # Low temperature for consistent results
-                    'num_predict': 20,   # Short response expected
+                    'temperature': 0.1,  # low temp = more consistent answers
+                    'num_predict': 20,   # we only need a short answer (max tokens)
                 }
             )
 
@@ -79,7 +76,7 @@ def classify_text(text, prompt_manager, model_name=None, retries=None):
         except Exception as e:
             print(f"Attempt {attempt + 1}/{retries} failed: {e}")
             if attempt < retries - 1:
-                time.sleep(2)  # Wait before retry
+                time.sleep(2)  # wait a bit before trying again
 
     return {
         'prediction': -1,
@@ -89,16 +86,14 @@ def classify_text(text, prompt_manager, model_name=None, retries=None):
 
 def evaluate_dataset(test_df, prompt_manager, model_name=None, verbose=True):
     """
-    Evaluate the model on the entire test dataset.
+    runs the model on all the test data
 
-    Args:
-        test_df: DataFrame with 'text' and 'label' columns
-        prompt_manager: PromptManager instance
-        model_name: Name of the model
-        verbose: Whether to show progress bar
+    test_df: dataframe with text and label columns
+    prompt_manager: our prompt manager with examples
+    model_name: which model
+    verbose: show progress bar or not
 
-    Returns:
-        DataFrame with predictions and evaluation results
+    returns dataframe with all predictions
     """
     model_name = model_name or config.MODEL_NAME
 
@@ -121,7 +116,7 @@ def evaluate_dataset(test_df, prompt_manager, model_name=None, verbose=True):
 
     results_df = pd.DataFrame(results)
 
-    # Calculate summary stats
+    # print out how we did
     valid_predictions = results_df[results_df['predicted_label'] != -1]
     total = len(results_df)
     valid = len(valid_predictions)
@@ -143,15 +138,11 @@ def evaluate_dataset(test_df, prompt_manager, model_name=None, verbose=True):
 
 def run_inference_pipeline(train_path=None, test_path=None, output_path=None):
     """
-    Run the complete inference pipeline.
+    runs everything from start to finish
 
-    Args:
-        train_path: Path to training data (for few-shot examples)
-        test_path: Path to test data
-        output_path: Path to save results
-
-    Returns:
-        DataFrame with all results
+    train_path: where to get training data (for few-shot examples)
+    test_path: where to get test data
+    output_path: where to save results
     """
     train_path = train_path or config.TRAIN_DATA_PATH
     test_path = test_path or config.TEST_DATA_PATH
@@ -161,7 +152,7 @@ def run_inference_pipeline(train_path=None, test_path=None, output_path=None):
     print("STARTING INFERENCE PIPELINE")
     print("="*50)
 
-    # Load data
+    # load the data
     print("\nLoading data...")
     train_df = pd.read_csv(train_path)
     test_df = pd.read_csv(test_path)
@@ -169,16 +160,16 @@ def run_inference_pipeline(train_path=None, test_path=None, output_path=None):
     print(f"Train samples (for few-shot): {len(train_df)}")
     print(f"Test samples: {len(test_df)}")
 
-    # Initialize prompt manager
+    # set up the prompt manager
     print("\nInitializing prompt manager...")
     prompt_manager = PromptManager(train_df)
     prompt_manager.display_examples()
 
-    # Run evaluation
+    # run the actual evaluation
     print(f"\nRunning evaluation with {config.MODEL_NAME}...")
     results_df = evaluate_dataset(test_df, prompt_manager)
 
-    # Save results
+    # save everything
     import os
     os.makedirs(config.RESULTS_DIR, exist_ok=True)
     results_df.to_csv(output_path, index=False)

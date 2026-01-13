@@ -1,6 +1,4 @@
-"""
-Metrics calculation module for toxicity classification evaluation.
-"""
+# metrics.py - calculates all the evaluation metrics
 
 import pandas as pd
 import numpy as np
@@ -17,15 +15,12 @@ import config
 
 def calculate_metrics(results_df):
     """
-    Calculate comprehensive classification metrics.
+    calculates all the classification metrics we need
 
-    Args:
-        results_df: DataFrame with 'true_label' and 'predicted_label' columns
-
-    Returns:
-        Dictionary containing all metrics
+    results_df: dataframe with true_label and predicted_label columns
+    returns a dict with all the metrics
     """
-    # Filter valid predictions
+    # only look at valid predictions (not -1)
     valid_df = results_df[results_df['predicted_label'] != -1].copy()
 
     if len(valid_df) == 0:
@@ -35,42 +30,44 @@ def calculate_metrics(results_df):
     y_true = valid_df['true_label'].values
     y_pred = valid_df['predicted_label'].values
 
-    # Basic metrics
+    # basic accuracy
     accuracy = accuracy_score(y_true, y_pred)
 
-    # Per-class metrics
+    # precision for each class
     precision_toxic = precision_score(y_true, y_pred, pos_label=1, zero_division=0)
     precision_nontoxic = precision_score(y_true, y_pred, pos_label=0, zero_division=0)
 
+    # recall for each class
     recall_toxic = recall_score(y_true, y_pred, pos_label=1, zero_division=0)
     recall_nontoxic = recall_score(y_true, y_pred, pos_label=0, zero_division=0)
 
+    # f1 for each class
     f1_toxic = f1_score(y_true, y_pred, pos_label=1, zero_division=0)
     f1_nontoxic = f1_score(y_true, y_pred, pos_label=0, zero_division=0)
 
-    # Macro averages
+    # macro averages (average of both classes)
     precision_macro = precision_score(y_true, y_pred, average='macro', zero_division=0)
     recall_macro = recall_score(y_true, y_pred, average='macro', zero_division=0)
     f1_macro = f1_score(y_true, y_pred, average='macro', zero_division=0)
 
-    # Confusion matrix
+    # confusion matrix
     cm = confusion_matrix(y_true, y_pred)
 
-    # Classification report
+    # sklearn gives us a nice report too
     class_report = classification_report(
         y_true, y_pred,
         target_names=['non-toxic', 'toxic'],
         output_dict=True
     )
 
-    # Count predictions
+    # count up the samples
     total_samples = len(results_df)
     valid_samples = len(valid_df)
     invalid_samples = total_samples - valid_samples
 
-    # Error counts
-    false_positives = cm[0, 1] if cm.shape == (2, 2) else 0  # Non-toxic classified as toxic
-    false_negatives = cm[1, 0] if cm.shape == (2, 2) else 0  # Toxic classified as non-toxic
+    # get the error counts from confusion matrix
+    false_positives = cm[0, 1] if cm.shape == (2, 2) else 0  # non-toxic predicted as toxic
+    false_negatives = cm[1, 0] if cm.shape == (2, 2) else 0  # toxic predicted as non-toxic
     true_positives = cm[1, 1] if cm.shape == (2, 2) else 0
     true_negatives = cm[0, 0] if cm.shape == (2, 2) else 0
 
@@ -101,7 +98,7 @@ def calculate_metrics(results_df):
 
 def print_metrics_report(metrics):
     """
-    Print a formatted metrics report.
+    prints out all the metrics in a nice format
     """
     if metrics is None:
         return
@@ -153,10 +150,11 @@ def print_metrics_report(metrics):
 
 def save_metrics_to_csv(metrics, output_path=None):
     """
-    Save metrics to a CSV file.
+    saves metrics to a csv file
     """
     output_path = output_path or f"{config.RESULTS_DIR}/metrics.csv"
 
+    # cant save arrays/dicts to csv so we skip those
     metrics_flat = {k: v for k, v in metrics.items()
                    if not isinstance(v, (np.ndarray, dict))}
 
@@ -167,14 +165,10 @@ def save_metrics_to_csv(metrics, output_path=None):
 
 def calculate_and_report(results_df, save=True):
     """
-    Calculate metrics and print report.
+    does both calculation and printing
 
-    Args:
-        results_df: DataFrame with predictions
-        save: Whether to save metrics to file
-
-    Returns:
-        Dictionary of metrics
+    results_df: dataframe with predictions
+    save: whether to save to file or not
     """
     metrics = calculate_metrics(results_df)
     print_metrics_report(metrics)
@@ -188,7 +182,7 @@ def calculate_and_report(results_df, save=True):
 
 
 if __name__ == "__main__":
-    # Load results and calculate metrics
+    # load results and calculate metrics
     try:
         results_df = pd.read_csv(f"{config.RESULTS_DIR}/predictions.csv")
         metrics = calculate_and_report(results_df)

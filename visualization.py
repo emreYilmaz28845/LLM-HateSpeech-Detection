@@ -1,6 +1,4 @@
-"""
-Visualization module for toxicity classification results.
-"""
+# visualization.py - makes all the charts and graphs
 
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -12,7 +10,7 @@ from metrics import calculate_metrics
 
 
 def setup_style():
-    """Set up matplotlib style for consistent visualizations."""
+    """sets up the plot style so everything looks consistent"""
     plt.style.use('seaborn-v0_8-whitegrid')
     plt.rcParams['figure.figsize'] = (10, 6)
     plt.rcParams['font.size'] = 12
@@ -22,7 +20,7 @@ def setup_style():
 
 def plot_confusion_matrix(metrics, save_path=None):
     """
-    Create and save a confusion matrix heatmap.
+    makes a confusion matrix heatmap
     """
     cm = metrics['confusion_matrix']
 
@@ -43,7 +41,7 @@ def plot_confusion_matrix(metrics, save_path=None):
     ax.set_ylabel('True Label', fontsize=12)
     ax.set_title('Confusion Matrix - Toxicity Classification', fontsize=14, fontweight='bold')
 
-    # Add percentages
+    # add percentages to each cell
     total = cm.sum()
     for i in range(2):
         for j in range(2):
@@ -62,7 +60,7 @@ def plot_confusion_matrix(metrics, save_path=None):
 
 def plot_metrics_comparison(metrics, save_path=None):
     """
-    Create a bar chart comparing precision, recall, and F1 for both classes.
+    bar chart comparing precision, recall, f1 for both classes
     """
     fig, ax = plt.subplots(figsize=(10, 6))
 
@@ -92,7 +90,7 @@ def plot_metrics_comparison(metrics, save_path=None):
     ax.legend()
     ax.set_ylim(0, 105)
 
-    # Add value labels on bars
+    # put the values on top of bars
     def add_labels(bars):
         for bar in bars:
             height = bar.get_height()
@@ -116,11 +114,11 @@ def plot_metrics_comparison(metrics, save_path=None):
 
 def plot_prediction_distribution(results_df, save_path=None):
     """
-    Plot distribution of correct vs incorrect predictions.
+    shows how many predictions were correct vs incorrect
     """
     fig, axes = plt.subplots(1, 2, figsize=(14, 5))
 
-    # Plot 1: Correct vs Incorrect overall
+    # pie chart for correct vs incorrect
     valid_df = results_df[results_df['predicted_label'] != -1]
     correct_count = valid_df['correct'].sum()
     incorrect_count = len(valid_df) - correct_count
@@ -130,7 +128,7 @@ def plot_prediction_distribution(results_df, save_path=None):
     sizes = [correct_count, incorrect_count, invalid_count]
     labels = [f'Correct\n({correct_count})', f'Incorrect\n({incorrect_count})', f'Invalid\n({invalid_count})']
 
-    # Remove zero values
+    # dont show zero values
     non_zero = [(s, l, c) for s, l, c in zip(sizes, labels, colors) if s > 0]
     if non_zero:
         sizes, labels, colors = zip(*non_zero)
@@ -139,10 +137,10 @@ def plot_prediction_distribution(results_df, save_path=None):
                 startangle=90, explode=[0.05] * len(sizes))
     axes[0].set_title('Prediction Accuracy Distribution', fontsize=14, fontweight='bold')
 
-    # Plot 2: Breakdown by class
+    # bar chart breakdown
     categories = ['True\nPositive', 'True\nNegative', 'False\nPositive', 'False\nNegative']
 
-    # Calculate values
+    # count up each type
     tp = ((valid_df['true_label'] == 1) & (valid_df['predicted_label'] == 1)).sum()
     tn = ((valid_df['true_label'] == 0) & (valid_df['predicted_label'] == 0)).sum()
     fp = ((valid_df['true_label'] == 0) & (valid_df['predicted_label'] == 1)).sum()
@@ -156,7 +154,7 @@ def plot_prediction_distribution(results_df, save_path=None):
     axes[1].set_ylabel('Count', fontsize=12)
     axes[1].set_title('Prediction Breakdown', fontsize=14, fontweight='bold')
 
-    # Add value labels
+    # add counts on top
     for bar, val in zip(bars, values):
         axes[1].annotate(str(val),
                         xy=(bar.get_x() + bar.get_width() / 2, bar.get_height()),
@@ -175,20 +173,20 @@ def plot_prediction_distribution(results_df, save_path=None):
 
 def plot_class_distribution(results_df, save_path=None):
     """
-    Plot the distribution of true labels vs predicted labels.
+    compares true labels vs predicted labels
     """
     fig, axes = plt.subplots(1, 2, figsize=(12, 5))
 
     valid_df = results_df[results_df['predicted_label'] != -1]
 
-    # True label distribution
+    # true label distribution
     true_counts = valid_df['true_label'].value_counts().sort_index()
     axes[0].bar(['Non-toxic', 'Toxic'], [true_counts.get(0, 0), true_counts.get(1, 0)],
                 color=['#2ecc71', '#e74c3c'], alpha=0.8)
     axes[0].set_title('True Label Distribution', fontsize=14, fontweight='bold')
     axes[0].set_ylabel('Count', fontsize=12)
 
-    # Predicted label distribution
+    # predicted label distribution
     pred_counts = valid_df['predicted_label'].value_counts().sort_index()
     axes[1].bar(['Non-toxic', 'Toxic'], [pred_counts.get(0, 0), pred_counts.get(1, 0)],
                 color=['#2ecc71', '#e74c3c'], alpha=0.8)
@@ -206,7 +204,7 @@ def plot_class_distribution(results_df, save_path=None):
 
 def plot_accuracy_summary(metrics, save_path=None):
     """
-    Create a summary visualization of key metrics.
+    makes a nice summary of the key metrics
     """
     fig, ax = plt.subplots(figsize=(10, 6))
 
@@ -225,7 +223,7 @@ def plot_accuracy_summary(metrics, save_path=None):
     ax.set_title('Overall Model Performance', fontsize=14, fontweight='bold')
     ax.set_ylim(0, 105)
 
-    # Add value labels
+    # add value labels
     for bar, val in zip(bars, values):
         ax.annotate(f'{val:.1f}%',
                    xy=(bar.get_x() + bar.get_width() / 2, bar.get_height()),
@@ -233,7 +231,7 @@ def plot_accuracy_summary(metrics, save_path=None):
                    textcoords="offset points",
                    ha='center', va='bottom', fontsize=12, fontweight='bold')
 
-    # Add horizontal line at common thresholds
+    # add threshold lines for reference
     ax.axhline(y=70, color='orange', linestyle='--', alpha=0.5, label='70% threshold')
     ax.axhline(y=80, color='green', linestyle='--', alpha=0.5, label='80% threshold')
     ax.legend(loc='lower right')
@@ -249,14 +247,14 @@ def plot_accuracy_summary(metrics, save_path=None):
 
 def generate_all_visualizations(results_df, metrics=None):
     """
-    Generate and save all visualizations.
+    generates and saves all the visualizations
     """
     setup_style()
 
-    # Create output directory
+    # make sure output folder exists
     os.makedirs(config.FIGURES_DIR, exist_ok=True)
 
-    # Calculate metrics if not provided
+    # calculate metrics if we dont have them
     if metrics is None:
         metrics = calculate_metrics(results_df)
 
@@ -268,7 +266,7 @@ def generate_all_visualizations(results_df, metrics=None):
     print("GENERATING VISUALIZATIONS")
     print("="*50)
 
-    # Generate all plots
+    # make all the plots
     plot_confusion_matrix(metrics, f"{config.FIGURES_DIR}/confusion_matrix.png")
     plot_metrics_comparison(metrics, f"{config.FIGURES_DIR}/metrics_comparison.png")
     plot_prediction_distribution(results_df, f"{config.FIGURES_DIR}/prediction_distribution.png")
@@ -277,12 +275,12 @@ def generate_all_visualizations(results_df, metrics=None):
 
     print(f"\nAll visualizations saved to {config.FIGURES_DIR}/")
 
-    # Close all figures to free memory
+    # close everything to save memory
     plt.close('all')
 
 
 if __name__ == "__main__":
-    # Load results and generate visualizations
+    # load results and make visualizations
     try:
         results_df = pd.read_csv(f"{config.RESULTS_DIR}/predictions.csv")
         generate_all_visualizations(results_df)

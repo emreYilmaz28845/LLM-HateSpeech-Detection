@@ -1,5 +1,5 @@
 """
-Compare Few-Shot vs Zero-Shot performance for toxicity classification.
+Quick check of how few-shot stacks up against zero-shot for toxicity classification.
 """
 
 import os
@@ -20,7 +20,7 @@ from metrics import calculate_metrics
 
 def classify_text_with_prompt(text, prompt, model_name=None, retries=3):
     """
-    Classify text using a given prompt.
+    Send text through the model with the given prompt and grab the label.
     """
     model_name = model_name or config.MODEL_NAME
 
@@ -49,7 +49,7 @@ def classify_text_with_prompt(text, prompt, model_name=None, retries=3):
 
 def evaluate_method(test_df, prompt_func, method_name, verbose=True):
     """
-    Evaluate a classification method on the test dataset.
+    Try a prompting method on the test set.
 
     Args:
         test_df: DataFrame with 'text' and 'label' columns
@@ -58,7 +58,7 @@ def evaluate_method(test_df, prompt_func, method_name, verbose=True):
         verbose: Show progress bar
 
     Returns:
-        DataFrame with predictions
+        DataFrame with predictions and raw responses
     """
     results = []
     iterator = tqdm(test_df.iterrows(), total=len(test_df),
@@ -84,30 +84,30 @@ def evaluate_method(test_df, prompt_func, method_name, verbose=True):
 
 def run_comparison():
     """
-    Run comparison between few-shot and zero-shot methods.
+    Run the head-to-head between few-shot and zero-shot prompts.
     """
     print("\n" + "="*70)
     print("   FEW-SHOT vs ZERO-SHOT COMPARISON")
     print("   Toxicity Classification with llama3.2:3b")
     print("="*70 + "\n")
 
-    # Load data
+    # load the datasets
     print("Loading data...")
     train_df = pd.read_csv(config.TRAIN_DATA_PATH)
     test_df = pd.read_csv(config.TEST_DATA_PATH)
     print(f"Test samples: {len(test_df)}")
 
-    # Initialize prompt manager for few-shot
+    # set up the prompt manager for few-shot examples
     prompt_manager = PromptManager(train_df, num_examples=5)
 
-    # Define prompt functions
+    # prompt builders for each setup
     def few_shot_prompt(text):
         return prompt_manager.get_prompt(text, use_few_shot=True)
 
     def zero_shot_prompt(text):
         return create_zero_shot_prompt(text)
 
-    # Run evaluations
+    # run each method
     print("\n" + "="*50)
     print("Running Zero-Shot Evaluation...")
     print("="*50)
@@ -118,7 +118,7 @@ def run_comparison():
     print("="*50)
     few_shot_results = evaluate_method(test_df, few_shot_prompt, "Few-Shot")
 
-    # Calculate metrics for both
+    # crunch metrics for both methods
     print("\n" + "="*70)
     print("CALCULATING METRICS")
     print("="*70)
@@ -126,7 +126,7 @@ def run_comparison():
     zero_shot_metrics = calculate_metrics(zero_shot_results)
     few_shot_metrics = calculate_metrics(few_shot_results)
 
-    # Create comparison table
+    # build a side-by-side table
     comparison_data = {
         'Metric': ['Accuracy', 'Precision (Macro)', 'Recall (Macro)', 'F1-Score (Macro)',
                    'Valid Predictions %', 'False Positives', 'False Negatives'],
@@ -152,13 +152,13 @@ def run_comparison():
 
     comparison_df = pd.DataFrame(comparison_data)
 
-    # Print comparison table
+    # show the table
     print("\n" + "="*70)
     print("COMPARISON RESULTS")
     print("="*70)
     print("\n" + comparison_df.to_string(index=False))
 
-    # Calculate improvement
+    # see which one improved more
     accuracy_improvement = (few_shot_metrics['accuracy'] - zero_shot_metrics['accuracy']) * 100
     f1_improvement = (few_shot_metrics['f1_macro'] - zero_shot_metrics['f1_macro']) * 100
 
@@ -175,7 +175,7 @@ def run_comparison():
     else:
         print("\nBoth methods performed equally!")
 
-    # Save results
+    # save everything for later
     os.makedirs(config.RESULTS_DIR, exist_ok=True)
     os.makedirs(config.FIGURES_DIR, exist_ok=True)
 
@@ -185,7 +185,7 @@ def run_comparison():
 
     print(f"\nResults saved to {config.RESULTS_DIR}/")
 
-    # Generate comparison visualization
+    # make the comparison plot
     generate_comparison_plot(zero_shot_metrics, few_shot_metrics)
 
     return {
@@ -197,11 +197,11 @@ def run_comparison():
 
 def generate_comparison_plot(zero_shot_metrics, few_shot_metrics):
     """
-    Generate a comparison visualization.
+    Draw the plots that compare the two setups.
     """
     fig, axes = plt.subplots(1, 2, figsize=(14, 5))
 
-    # Plot 1: Bar chart comparison
+    # Plot 1: bar chart comparing scores
     metrics_names = ['Accuracy', 'Precision', 'Recall', 'F1-Score']
     zero_shot_values = [
         zero_shot_metrics['accuracy'] * 100,
@@ -229,7 +229,7 @@ def generate_comparison_plot(zero_shot_metrics, few_shot_metrics):
     axes[0].legend()
     axes[0].set_ylim(0, 105)
 
-    # Add value labels
+    # add the numbers on top of the bars
     for bar in bars1:
         height = bar.get_height()
         axes[0].annotate(f'{height:.1f}%',
@@ -243,11 +243,11 @@ def generate_comparison_plot(zero_shot_metrics, few_shot_metrics):
                         xytext=(0, 3), textcoords="offset points",
                         ha='center', va='bottom', fontsize=9)
 
-    # Plot 2: Confusion matrix comparison (side by side)
+    # Plot 2: confusion matrix counts side by side
     cm_zero = zero_shot_metrics['confusion_matrix']
     cm_few = few_shot_metrics['confusion_matrix']
 
-    # Create combined data for grouped bar
+    # combine counts for grouped bars
     categories = ['True\nNegative', 'False\nPositive', 'False\nNegative', 'True\nPositive']
     zero_values = [cm_zero[0,0], cm_zero[0,1], cm_zero[1,0], cm_zero[1,1]]
     few_values = [cm_few[0,0], cm_few[0,1], cm_few[1,0], cm_few[1,1]]
@@ -262,7 +262,7 @@ def generate_comparison_plot(zero_shot_metrics, few_shot_metrics):
     axes[1].set_xticklabels(categories)
     axes[1].legend()
 
-    # Add value labels
+    # add counts on the bars
     for bar in bars1:
         height = bar.get_height()
         axes[1].annotate(f'{int(height)}',
